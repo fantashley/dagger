@@ -122,6 +122,66 @@ func (e *Engine) Container(
 	return ctr, nil
 }
 
+func (e *Engine) DebugContainer(
+	ctx context.Context,
+
+	// +optional
+	platform dagger.Platform,
+	// +optional
+	gpuSupport bool,
+) (*dagger.Container, error) {
+	cfg, err := generateConfig(e.Trace, e.Config)
+	if err != nil {
+		return nil, err
+	}
+	entrypoint, err := generateEntrypoint(e.Args)
+	if err != nil {
+		return nil, err
+	}
+
+	builder, err := build.NewBuilder(ctx, e.Dagger.Source())
+	if err != nil {
+		return nil, err
+	}
+	builder = builder.
+		WithRace(e.Race)
+	if platform != "" {
+		builder = builder.WithPlatform(platform)
+	}
+
+	builder = builder.WithUbuntuBase()
+
+	if gpuSupport {
+		builder = builder.WithGPUSupport()
+	}
+
+	ctr, err := builder.Engine(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	delve := builder.DelveBinary()
+
+	ctr = ctr.
+		WithFile(engineTomlPath, cfg).
+		WithFile(engineEntrypointPath, entrypoint).
+		WithFile("/usr/local/bin/dlv", delve).
+		WithDirectory("/src/dagger", e.Dagger.Source()).
+		WithWorkdir("/src/dagger").
+		WithExposedPort(4040).
+		WithEntrypoint([]string{filepath.Base(engineEntrypointPath)})
+
+	cli, err := builder.CLI(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ctr = ctr.
+		WithFile(cliPath, cli).
+		WithEnvVariable("_EXPERIMENTAL_DAGGER_RUNNER_HOST", "unix://"+engineUnixSocketPath)
+
+	return ctr, nil
+}
+
 // Create a test engine service
 func (e *Engine) Service(
 	ctx context.Context,

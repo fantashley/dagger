@@ -107,6 +107,7 @@ func (t Engine) Dev(ctx context.Context) error {
 		"-e", util.CacheConfigEnvName,
 		"-e", "DAGGER_CLOUD_TOKEN",
 		"-e", "DAGGER_CLOUD_URL",
+		"-p", "4040:4040",
 		"-e", util.GPUSupportEnvName,
 		"-v", volumeName + ":" + distconsts.EngineDefaultStateDir,
 		// "-p", "6060:6060",
@@ -129,6 +130,16 @@ func (t Engine) Dev(ctx context.Context) error {
 	fmt.Println("export _EXPERIMENTAL_DAGGER_RUNNER_HOST=docker-container://" + containerName)
 	fmt.Println("export _DAGGER_TESTS_ENGINE_TAR=" + filepath.Join(binDir, "engine.tar"))
 	fmt.Println("export PATH=" + binDir + ":$PATH")
+
+	tmpDir, err := os.MkdirTemp("/tmp", "docker-command")
+	if err != nil {
+		return fmt.Errorf("error creating tmp dir: %w", err)
+	}
+
+	err = os.WriteFile(filepath.Join(tmpDir, "command"), []byte(strings.Join(runArgs, " ")), 0666)
+	if err != nil {
+		return fmt.Errorf("error writing docker command to file: %w")
+	}
 
 	return nil
 }

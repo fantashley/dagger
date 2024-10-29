@@ -189,7 +189,7 @@ func (build *Builder) Engine(ctx context.Context) (*dagger.Container, error) {
 			`})
 	case "ubuntu":
 		base = dag.Container(dagger.ContainerOpts{Platform: build.platform}).
-			From("ubuntu:"+consts.UbuntuVersion).
+			From("golang:latest").
 			WithEnvVariable("DEBIAN_FRONTEND", "noninteractive").
 			WithEnvVariable("DAGGER_APT_CACHE_BUSTER", fmt.Sprintf("%d", time.Now().Truncate(24*time.Hour).Unix())).
 			WithExec([]string{"apt-get", "update"}).
@@ -328,6 +328,19 @@ func (build *Builder) binary(pkg string, version bool, race bool) *dagger.File {
 
 	result := base.
 		WithExec(buildArgs).
+		File(output)
+	return result
+}
+
+func (build *Builder) DelveBinary() *dagger.File {
+	output := "/usr/local/bin/dlv"
+	base := dag.Go(build.source).Env().With(build.goPlatformEnv).WithEnvVariable("GOBIN", filepath.Dir(output))
+	installArgs := []string{
+		"go", "install",
+		"github.com/go-delve/delve/cmd/dlv@latest",
+	}
+	result := base.
+		WithExec(installArgs).
 		File(output)
 	return result
 }

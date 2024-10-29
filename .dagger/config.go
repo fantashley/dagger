@@ -9,7 +9,6 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/dagger/dagger/.dagger/consts"
 	"github.com/dagger/dagger/.dagger/internal/dagger"
 )
 
@@ -77,7 +76,7 @@ func generateEntrypoint(kvs []string) (*dagger.File, error) {
 	tmpl := template.Must(template.New("entrypoint").Parse(engineEntrypointTmpl))
 	buf := new(bytes.Buffer)
 	err := tmpl.Execute(buf, entrypointTmplParams{
-		EngineBin:         consts.EngineServerPath,
+		EngineBin:         "/usr/local/bin/dlv debug /src/dagger/cmd/engine/ --continue --listen :4040 --headless --accept-multiclient --",
 		EngineConfig:      engineTomlPath,
 		EntrypointArgs:    opts,
 		EntrypointArgKeys: keys,

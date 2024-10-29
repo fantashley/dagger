@@ -307,7 +307,7 @@ func (dev *DaggerDev) DevExport(
 	}
 	enginePlatformSpec := platformSpec
 	enginePlatformSpec.OS = "linux"
-	engineCtr, err := engine.Container(ctx, dagger.Platform(platforms.Format(enginePlatformSpec)), image, gpuSupport)
+	engineCtr, err := engine.DebugContainer(ctx, dagger.Platform(platforms.Format(enginePlatformSpec)), gpuSupport)
 	if err != nil {
 		return nil, err
 	}

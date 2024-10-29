@@ -295,6 +295,68 @@ func (dev *DaggerDev) DevExport(
 	return dir, nil
 }
 
+func (dev *DaggerDev) DevDebugExport(
+	ctx context.Context,
+	// +optional
+	platform dagger.Platform,
+
+	// +optional
+	race bool,
+	// +optional
+	trace bool,
+
+	// Set target distro
+	// +optional
+	image *Distro,
+	// Enable experimental GPU support
+	// +optional
+	gpuSupport bool,
+) (*dagger.Directory, error) {
+	var platformSpec platforms.Platform
+	if platform == "" {
+		platformSpec = platforms.DefaultSpec()
+	} else {
+		var err error
+		platformSpec, err = platforms.Parse(string(platform))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	engine := dev.Engine()
+	if race {
+		engine = engine.WithRace()
+	}
+	if trace {
+		engine = engine.WithTrace()
+	}
+	enginePlatformSpec := platformSpec
+	enginePlatformSpec.OS = "linux"
+	engineCtr, err := engine.Container(ctx, dagger.Platform(platforms.Format(enginePlatformSpec)), image, gpuSupport)
+	if err != nil {
+		return nil, err
+	}
+	engineTar := engineCtr.AsTarball(dagger.ContainerAsTarballOpts{
+		// use gzip to avoid incompatibility w/ older docker versions
+		ForcedCompression: dagger.Gzip,
+	})
+
+	cli := dev.CLI()
+	cliBin, err := cli.Binary(ctx, platform)
+	if err != nil {
+		return nil, err
+	}
+	cliPath := "dagger"
+	if platformSpec.OS == "windows" {
+		cliPath += ".exe"
+	}
+
+	dir := dag.Directory().
+		WithFile("engine.tar", engineTar).
+		WithFile(cliPath, cliBin)
+	return dir, nil
+}
+
 func (dev *DaggerDev) withDockerCfg(ctr *dagger.Container) *dagger.Container {
 	if dev.DockerCfg == nil {
 		return ctr

@@ -32,7 +32,8 @@ type Engine struct {
 
 	Trace bool // +private
 
-	Race bool // +private
+	Race          bool // +private
+	DelveDebugger bool // +private
 }
 
 func (e *Engine) WithConfig(key, value string) *Engine {
@@ -47,6 +48,11 @@ func (e *Engine) WithArg(key, value string) *Engine {
 
 func (e *Engine) WithRace() *Engine {
 	e.Race = true
+	return e
+}
+
+func (e *Engine) WithDelve() *Engine {
+	e.DelveDebugger = true
 	return e
 }
 

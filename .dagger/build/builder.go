@@ -32,7 +32,8 @@ type Builder struct {
 	base       string
 	gpuSupport bool
 
-	race bool
+	race          bool
+	delveDebugger bool
 }
 
 func NewBuilder(ctx context.Context, source *dagger.Directory) (*Builder, error) {
@@ -94,6 +95,12 @@ func NewBuilder(ctx context.Context, source *dagger.Directory) (*Builder, error)
 func (build *Builder) WithRace(race bool) *Builder {
 	b := *build
 	b.race = race
+	return &b
+}
+
+func (build *Builder) WithDelve() *Builder {
+	b := *build
+	b.delveDebugger = true
 	return &b
 }
 
@@ -163,6 +170,14 @@ func (build *Builder) Engine(ctx context.Context) (*dagger.Container, error) {
 		}
 	}
 
+	if build.delveDebugger {
+		switch build.base {
+		case "ubuntu":
+		default:
+			return nil, fmt.Errorf("delve support requires %q base, not %q", "ubuntu", build.base)
+		}
+	}
+
 	var base *dagger.Container
 	switch build.base {
 	case "alpine", "":
@@ -188,8 +203,19 @@ func (build *Builder) Engine(ctx context.Context) (*dagger.Container, error) {
 				ln -s /sbin/ip6tables-legacy-restore /usr/sbin/ip6tables-restore
 			`})
 	case "ubuntu":
-		base = dag.Container(dagger.ContainerOpts{Platform: build.platform}).
-			From("ubuntu:"+consts.UbuntuVersion).
+		var base *dagger.Container
+		if build.delveDebugger {
+			installArgs := []string{
+				"go", "install",
+				"github.com/go-delve/delve/cmd/dlv@latest",
+			}
+			base = dag.Go(build.source).Env().With(build.goPlatformEnv).
+				WithExec(installArgs)
+		} else {
+			base = dag.Container(dagger.ContainerOpts{Platform: build.platform}).
+				From("ubuntu:" + consts.UbuntuVersion)
+		}
+		base = base.
 			WithEnvVariable("DEBIAN_FRONTEND", "noninteractive").
 			WithEnvVariable("DAGGER_APT_CACHE_BUSTER", fmt.Sprintf("%d", time.Now().Truncate(24*time.Hour).Unix())).
 			WithExec([]string{"apt-get", "update"}).

@@ -18,6 +18,7 @@ const (
 	engineEntrypointPath = "/usr/local/bin/dagger-entrypoint.sh"
 	engineUnixSocketPath = "/var/run/buildkit/buildkitd.sock"
 	cliPath              = "/usr/local/bin/dagger"
+	defaultDelvePort     = 4040
 )
 
 const engineEntrypointTmpl = `#!/bin/sh
